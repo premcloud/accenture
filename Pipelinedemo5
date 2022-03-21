@@ -1,0 +1,45 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+trigger:
+  branches:
+    include:
+    - master
+  paths:
+    include:
+    - Main/Source/HAPISchedulerSln*
+    exclude:
+     - Main/Source/HAPISchedulerSln/Source/HAPI.OrdSvc*
+     - Main/Source/HAPISchedulerSln/Source/HAPI.AlertsSVC*
+ 
+pool:
+  vmImage: 'windows-2019'
+steps:
+- task: NuGetCommand@2
+  inputs:
+    command: 'restore'
+    restoreSolution: 'Main/Source/HAPISchedulerSln/HAPISchedulerSln.sln'
+    feedsToUse: 'select'
+
+- task: MSBuild@1
+  inputs:
+    solution: 'Main/Source/HAPISchedulerSln/HAPISchedulerSln.sln'
+    msbuildVersion: '16.0'
+    msbuildArchitecture: x64
+    msbuildArguments: /p:AutoParameterizationWebConfigConnectionStrings=false /p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactstagingdirectory)\\"
+    platform: 'any cpu'
+    configuration: 'release'
+    clean: true
+
+- task: CopyFiles@2
+  inputs:
+    SourceFolder: '$(Build.SourcesDirectory)'
+    contents: '$(Build.SourcesDirectory)/Main/Source/HAPISchedulerSln/Source/HAPI.SchedulerSvc/bin/Release/!(*.pdb|*.xml|*.json|*.config)'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+- task: PublishBuildArtifacts@1
+  inputs:
+   PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+   ArtifactName: 'HAPISchedulerSln'
+   publishLocation: 'Container'
